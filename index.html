@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Cricket Tracker</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:'Trebuchet MS',sans-serif;background:#080c14;color:#e2e8f0;min-height:100vh;}
+  .nav{background:linear-gradient(90deg,#0d1117,#0f1f3d);border-bottom:1px solid #1e3a5f;padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100;}
+  .nav-title{font-weight:700;font-size:15px;}
+  .nav-tabs{display:flex;gap:4px;}
+  .nav-btn{background:transparent;border:1px solid transparent;border-radius:6px;padding:6px 12px;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;}
+  .nav-btn.active{background:#1e3a5f;border-color:#3b82f6;color:#60a5fa;}
+  .view{display:none;max-width:680px;margin:0 auto;padding:16px;}
+  .view.active{display:block;}
+
+  /* WEEK ROW */
+  .week-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:16px;scrollbar-width:none;}
+  .week-row::-webkit-scrollbar{display:none;}
+  .week-btn{flex-shrink:0;border-radius:10px;padding:10px 16px;border:1px solid;cursor:pointer;font-family:inherit;font-weight:700;font-size:12px;transition:all .15s;text-align:center;min-width:78px;background:none;}
+  .week-btn .wn{font-size:14px;margin-bottom:2px;}
+  .week-btn .ws{font-size:10px;opacity:0.7;}
+
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
+  .modal-overlay.hidden{display:none;}
+  .modal-box{background:#0d1220;border:1px solid #1e3a5f;border-radius:20px 20px 0 0;width:100%;max-width:680px;padding:24px 20px 40px;max-height:90vh;overflow-y:auto;}
+  .modal-pill{width:40px;height:4px;background:#1e3a5f;border-radius:2px;margin:0 auto 20px;}
+  .modal-tag{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#3b82f6;margin-bottom:8px;}
+  .modal-title{font-size:19px;font-weight:700;margin-bottom:6px;}
+  .modal-sub{font-size:13px;color:#64748b;margin-bottom:22px;line-height:1.5;}
+  .area-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;}
+  .area-card{border-radius:12px;border:2px solid #1e293b;background:#0f172a;padding:14px 16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:14px;}
+  .area-card.sel{background:var(--abg);}
+  .area-icon{font-size:22px;flex-shrink:0;}
+  .area-info{flex:1;}
+  .area-name{font-size:14px;font-weight:700;margin-bottom:3px;transition:color .2s;}
+  .area-desc{font-size:11px;color:#64748b;line-height:1.4;}
+  .area-check{width:22px;height:22px;border-radius:50%;border:2px solid #334155;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;transition:all .2s;color:transparent;}
+  .area-card.sel .area-check{color:#000;border-color:var(--ac);background:var(--ac);}
+  .area-card.sel{border-color:var(--ac);}
+  .confirm-btn{width:100%;padding:15px;background:#3b82f6;color:#fff;font-family:'Trebuchet MS',sans-serif;font-size:14px;font-weight:700;border:none;border-radius:12px;cursor:pointer;}
+  .confirm-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+  /* WEEK HEADER */
+  .wk-header{border-radius:12px;padding:15px 18px;margin-bottom:14px;}
+  .wk-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+  .wk-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;margin-bottom:3px;}
+  .wk-title{font-size:17px;font-weight:700;}
+  .done-btn{font-size:11px;font-weight:700;padding:6px 14px;border-radius:20px;border:2px solid #10b981;background:transparent;color:#10b981;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .done-btn.active{background:#10b981;color:#000;}
+  .area-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .area-pill{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:20px;}
+  .change-btn{font-size:10px;font-weight:600;color:#475569;background:transparent;border:1px solid #1e293b;border-radius:4px;padding:3px 8px;cursor:pointer;font-family:inherit;margin-top:8px;display:inline-block;}
+
+  /* DONE BANNER */
+  .done-banner{background:linear-gradient(135deg,#052e16,#0a1f0f);border:1px solid #10b98133;border-radius:10px;padding:16px;margin-bottom:14px;text-align:center;}
+  .done-banner .di{font-size:32px;margin-bottom:6px;}
+  .done-banner .dm{font-size:14px;font-weight:700;color:#86efac;}
+  .done-banner .ds{font-size:12px;color:#475569;margin-top:4px;}
+
+  /* DAY TABS */
+  .day-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px;scrollbar-width:none;}
+  .day-scroll::-webkit-scrollbar{display:none;}
+  .day-tab{border-radius:8px;padding:8px 10px;cursor:pointer;font-family:inherit;border:1px solid #1e293b;background:#0f172a;color:#475569;min-width:52px;text-align:center;transition:all .15s;flex-shrink:0;}
+  .day-tab.active{background:#1e293b;color:#fff;}
+  .dt-name{font-size:12px;font-weight:700;}
+  .dt-cnt{font-size:10px;margin-top:2px;min-height:13px;}
+
+  /* PROGRESS */
+  .prog-wrap{margin-bottom:16px;}
+  .prog-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;}
+  .prog-track{background:#1e293b;border-radius:4px;height:6px;overflow:hidden;}
+  .prog-fill{height:100%;border-radius:4px;transition:width .4s;}
+
+  /* DRILLS */
+  .drill-list{display:flex;flex-direction:column;gap:8px;padding-bottom:24px;}
+  .dc{border-radius:10px;padding:13px 14px;display:flex;align-items:flex-start;gap:10px;border:1px solid;transition:background .2s,border-color .2s;}
+  .dc.done{background:#0a1f0f;border-color:#10b98144;}
+  .dc.miss{background:#1f0a0a;border-color:#ef444444;}
+  .dc.pending{background:#0f172a;border-color:#1e293b;}
+  .cd{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+  .dt{flex:1;}
+  .dn{font-size:13px;font-weight:500;line-height:1.4;}
+  .dn.done{color:#86efac;}
+  .dn.miss{color:#fca5a5;text-decoration:line-through;}
+  .dn.pending{color:#cbd5e1;}
+  .da{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
+  .dbtns{display:flex;gap:6px;flex-shrink:0;}
+  .dbtn{width:35px;height:35px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;border:2px solid #1e293b;background:transparent;color:#475569;transition:all .15s;font-family:inherit;}
+  .dbtn.don{border-color:#10b981;background:#10b981;color:#fff;}
+  .dbtn.mis{border-color:#ef4444;background:#ef4444;color:#fff;}
+
+  /* NO PLAN */
+  .no-plan{text-align:center;padding:40px 20px;}
+  .no-plan-icon{font-size:40px;margin-bottom:12px;}
+  .no-plan-txt{font-size:14px;color:#475569;margin-bottom:18px;line-height:1.6;}
+  .setup-btn{background:#1e3a5f;color:#60a5fa;border:1px solid #3b82f6;border-radius:10px;padding:12px 24px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+
+  /* ANALYTICS */
+  .sg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;}
+  .sc{background:#0f172a;border-radius:12px;padding:16px 10px;text-align:center;border:1px solid;}
+  .sv{font-size:26px;font-weight:800;}
+  .sl{font-size:11px;color:#64748b;margin-top:4px;}
+  .ac{background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:18px;margin-bottom:16px;}
+  .at{font-size:13px;font-weight:700;margin-bottom:14px;}
+  .bt{background:#1e293b;border-radius:4px;height:8px;overflow:hidden;position:relative;}
+  .bd{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .4s;}
+  .bm{position:absolute;top:0;bottom:0;background:#ef4444;}
+  .cr{margin-bottom:14px;}
+  .crh{display:flex;justify-content:space-between;margin-bottom:5px;font-size:12px;}
+  .cn{display:flex;align-items:center;gap:8px;font-weight:600;}
+  .wr{background:#0a0f1a;border-radius:8px;padding:12px 14px;margin-bottom:10px;border:1px solid;}
+  .wrh{display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;}
+  .wc{display:flex;gap:12px;margin-top:8px;font-size:11px;color:#475569;}
+  .ic{background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:18px;}
+  .il{font-size:13px;margin-bottom:10px;line-height:1.5;}
+  .in{font-size:12px;color:#475569;font-style:italic;margin-top:8px;}
+  .lg{display:flex;gap:16px;margin-top:10px;font-size:11px;color:#475569;}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="nav-title">🏏 Cricket Tracker</div>
+  <div class="nav-tabs">
+    <button class="nav-btn active" onclick="switchView('tracker')">Tracker</button>
+    <button class="nav-btn" onclick="switchView('analytics')">Analytics</button>
+  </div>
+</div>
+
+<!-- AREA PICKER MODAL -->
+<div class="modal-overlay hidden" id="modal">
+  <div class="modal-box">
+    <div class="modal-pill"></div>
+    <div class="modal-tag" id="mtag"></div>
+    <div class="modal-title" id="mtitle"></div>
+    <div class="modal-sub">Pick which areas you want to train this week. You can select multiple.</div>
+    <div class="area-grid" id="agrid"></div>
+    <button class="confirm-btn" id="cbtn" onclick="confirmAreas()" disabled>CONFIRM SELECTION</button>
+  </div>
+</div>
+
+<!-- TRACKER -->
+<div id="view-tracker" class="view active">
+  <div class="week-row" id="week-row"></div>
+  <div id="tbody"></div>
+</div>
+
+<!-- ANALYTICS -->
+<div id="view-analytics" class="view">
+  <div style="font-size:18px;font-weight:700;margin-bottom:18px;">📊 Your Analysis</div>
+  <div class="sg" id="sg"></div>
+  <div class="ac">
+    <div class="at">Overall Completion</div>
+    <div class="bt" style="height:10px;">
+      <div class="bd" id="obd" style="background:linear-gradient(90deg,#10b981,#3b82f6);width:0%"></div>
+      <div class="bm" id="obm" style="width:0%"></div>
+    </div>
+    <div class="lg"><span style="color:#10b981">■ Done</span><span style="color:#ef4444">■ Missed</span><span>■ Pending</span></div>
+  </div>
+  <div class="ac"><div class="at">By Category</div><div id="catbd"></div></div>
+  <div class="ac"><div class="at">Week by Week</div><div id="wkbd"></div></div>
+  <div class="ic" id="ic" style="display:none"><div class="at">🎯 Honest Assessment</div><div id="icont"></div></div>
+</div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────────────────────
+const WEEKS = [
+  {week:1, theme:"Foundation & Diagnosis", color:"#3b82f6"},
+  {week:2, theme:"Intensity Ramp",         color:"#f59e0b"},
+  {week:3, theme:"Pressure Simulation",    color:"#ec4899"},
+  {week:4, theme:"Peak & Test Yourself",   color:"#10b981"},
+];
+
+const AREAS = [
+  {id:"offside",  icon:"🏏", name:"Off Side",      color:"#84cc16", bg:"rgba(132,204,22,0.08)",   desc:"Cover drive, square cut, upper cut"},
+  {id:"vzone",    icon:"⬆️", name:"V Zone",         color:"#a78bfa", bg:"rgba(167,139,250,0.08)",  desc:"Straight drives, on-drives, punches down the ground"},
+  {id:"backfoot", icon:"👣", name:"Back Foot",      color:"#f87171", bg:"rgba(248,113,113,0.08)",  desc:"Cut, pull, hook, back foot punch"},
+  {id:"legstump", icon:"🎯", name:"Leg Stump Ball", color:"#60a5fa", bg:"rgba(96,165,250,0.08)",   desc:"Flick off pads, sweep, fine glance"},
+  {id:"spinners", icon:"🌀", name:"Vs Spinners",    color:"#fbbf24", bg:"rgba(251,191,36,0.08)",   desc:"Reading turn, sweep, footwork against spin"},
+];
+
+// Fixed drills for each day (always present)
+const FIXED = {
+  Mon:[
+    {id:"MON-1", title:"4km easy run",                                          cat:"fitness"},
+    {id:"MON-2", title:"Dynamic warm-up — leg swings, arm circles, hip rotations", cat:"fitness"},
+    {id:"MON-3", title:"Bodyweight circuit — 3x squats, lunges, push-ups, plank",  cat:"fitness"},
+  ],
+  Tue:[
+    {id:"TUE-1", title:"Ladder drills — 4 patterns x5 reps",                    cat:"fitness"},
+    {id:"TUE-2", title:"Cone shuttle runs 5-10-5 x8",                           cat:"fitness"},
+    {id:"TUE-3", title:"Bowling — 5 over spells, line & length focus",           cat:"bowling"},
+    {id:"TUE-4", title:"50 catches — high catches + slip catches",               cat:"fielding"},
+    {id:"TUE-5", title:"Ground fielding — slide stops, one-hand pick-up",        cat:"fielding"},
+    {id:"TUE-6", title:"Throw accuracy at stumps — 10m & 20m",                  cat:"fielding"},
+  ],
+  Wed:[
+    {id:"WED-1", title:"10 min meditation + box breathing (4-4-4-4)",            cat:"mental"},
+    {id:"WED-2", title:"Journal: 3 weaknesses + 1 win from yesterday",           cat:"mental"},
+    {id:"WED-3", title:"Bowling practice (30 min)",                              cat:"bowling"},
+    {id:"WED-4", title:"Video review — record & watch your batting",             cat:"mental"},
+  ],
+  Thu:[
+    {id:"THU-1", title:"Sprints 6x30m with full recovery",                       cat:"fitness"},
+    {id:"THU-2", title:"Box jumps 3x10",                                         cat:"fitness"},
+    {id:"THU-3", title:"Medicine ball rotational throws 3x12 per side",          cat:"fitness"},
+    {id:"THU-4", title:"Running between wickets — sharp singles drill",          cat:"fitness"},
+  ],
+  Fri:[
+    {id:"FRI-1", title:"20 min yoga/stretching — hips, hamstrings, shoulders",  cat:"fitness"},
+    {id:"FRI-2", title:"Core circuit — Russian twists, hollow holds, side planks", cat:"fitness"},
+    {id:"FRI-3", title:"Bowl 8 overs at match intensity — track no-balls & wides", cat:"bowling"},
+    {id:"FRI-4", title:"Boundary fielding — run, slide, return to keeper",       cat:"fielding"},
+    {id:"FRI-5", title:"Mental reset after each fielding error — 3 deep breaths", cat:"mental"},
+  ],
+  Sat:[
+    {id:"SAT-1", title:"Play proper match / intra-squad game",                   cat:"batting"},
+    {id:"SAT-2", title:"KPI: Bowl 4 tight overs",                               cat:"bowling"},
+    {id:"SAT-3", title:"KPI: Take 2 clean catches",                             cat:"fielding"},
+    {id:"SAT-4", title:"Post-match 15 min mental debrief",                      cat:"mental"},
+  ],
+  Sun:[
+    {id:"SUN-1", title:"Light 20 min walk or swim",                             cat:"fitness"},
+    {id:"SUN-2", title:"Full body stretch 30 min",                              cat:"fitness"},
+    {id:"SUN-3", title:"Week review journal — 3 improvements + 1 focus",        cat:"mental"},
+    {id:"SUN-4", title:"Watch 20 min pro cricket — study batting & shot selection", cat:"mental"},
+  ],
+};
+
+// Batting drills per area — added on Mon, Thu (batting days) and Sat (as KPIs)
+const AREA_DRILLS = {
+  offside: {
+    Mon:[
+      {id:"OS-M1", title:"Cover drive throwdowns — 3x20 balls, aim for gap between cover & mid-off", cat:"batting", area:"offside"},
+      {id:"OS-M2", title:"Square cut practice — back foot, wait for ball to reach you, 3x15 reps",   cat:"batting", area:"offside"},
+      {id:"OS-M3", title:"Upper cut drill — short-pitched balls, roll wrists over, 3x10 reps",       cat:"batting", area:"offside"},
+    ],
+    Thu:[
+      {id:"OS-T1", title:"Off side only nets — any on-side shot = dismissed, 30 min",                cat:"batting", area:"offside"},
+      {id:"OS-T2", title:"Cover drive off moving ball — 4x10 balls at 75% pace, hit the gap",        cat:"batting", area:"offside"},
+      {id:"OS-T3", title:"Cut shot pressure drill — 10 cuts in a row without going to fielder",      cat:"batting", area:"offside"},
+    ],
+    Sat:[
+      {id:"OS-S1", title:"Match KPI: Score at least 2 boundaries through off side",                  cat:"batting", area:"offside"},
+    ],
+  },
+  vzone: {
+    Mon:[
+      {id:"VZ-M1", title:"Straight drive throwdowns — head over ball, full face, 3x20 balls",        cat:"batting", area:"vzone"},
+      {id:"VZ-M2", title:"On-drive drill — front foot, hit to left of mid-on, 3x15 reps",            cat:"batting", area:"vzone"},
+      {id:"VZ-M3", title:"Straight punch — back foot, punch along ground between mid-on & mid-off",  cat:"batting", area:"vzone"},
+    ],
+    Thu:[
+      {id:"VZ-T1", title:"V-zone only drill — only score between mid-on & mid-off, 25 balls",        cat:"batting", area:"vzone"},
+      {id:"VZ-T2", title:"Full ball straight drive under pressure — 3 misses = restart, 20 balls",   cat:"batting", area:"vzone"},
+      {id:"VZ-T3", title:"On-drive off spin — front foot, keep it along the ground, 15 reps",        cat:"batting", area:"vzone"},
+    ],
+    Sat:[
+      {id:"VZ-S1", title:"Match KPI: Play at least 3 intentional straight/on-drives",                cat:"batting", area:"vzone"},
+    ],
+  },
+  backfoot: {
+    Mon:[
+      {id:"BF-M1", title:"Pull shot drill — short ball, get on top, keep it down, 3x15 reps",        cat:"batting", area:"backfoot"},
+      {id:"BF-M2", title:"Square cut — wait, go back & across, hit late, 3x15 reps",                 cat:"batting", area:"backfoot"},
+      {id:"BF-M3", title:"Back foot punch off stump — push through covers, 3x12 reps",               cat:"batting", area:"backfoot"},
+    ],
+    Thu:[
+      {id:"BF-T1", title:"Short ball survival — 20 short balls in a row, pull or duck, no top edges", cat:"batting", area:"backfoot"},
+      {id:"BF-T2", title:"Hook shot control — keep it down, practice rolling wrists, 3x10",          cat:"batting", area:"backfoot"},
+      {id:"BF-T3", title:"Back foot pressure: 10 back foot shots in a row without getting out",       cat:"batting", area:"backfoot"},
+    ],
+    Sat:[
+      {id:"BF-S1", title:"Match KPI: Handle at least 3 short balls — pull, duck or sway (no top edge)", cat:"batting", area:"backfoot"},
+    ],
+  },
+  legstump: {
+    Mon:[
+      {id:"LS-M1", title:"Leg flick throwdowns — ball on pads, flick to fine leg, 3x20 reps",        cat:"batting", area:"legstump"},
+      {id:"LS-M2", title:"Sweep shot drill — front knee down, hit to square leg, 3x15 reps",         cat:"batting", area:"legstump"},
+      {id:"LS-M3", title:"Fine glance practice — late, soft hands, direct to fine leg, 3x12 reps",   cat:"batting", area:"legstump"},
+    ],
+    Thu:[
+      {id:"LS-T1", title:"Leg side only nets — 30 min, all scoring on leg side, track % of shots",   cat:"batting", area:"legstump"},
+      {id:"LS-T2", title:"Pressure flick — 15 balls on leg stump, no LBW, 100% cleanly hit",         cat:"batting", area:"legstump"},
+      {id:"LS-T3", title:"Slog sweep drill — under pressure, clear the mid-wicket boundary, 10 reps", cat:"batting", area:"legstump"},
+    ],
+    Sat:[
+      {id:"LS-S1", title:"Match KPI: Play at least 2 leg side shots intentionally and score",         cat:"batting", area:"legstump"},
+    ],
+  },
+  spinners: {
+    Mon:[
+      {id:"SP-M1", title:"Footwork vs spin — come down the track 10 times, hit to straight or mid-on", cat:"batting", area:"spinners"},
+      {id:"SP-M2", title:"Sweep vs spin — 3x15 sweeps, keep it along the ground, no miscues",         cat:"batting", area:"spinners"},
+      {id:"SP-M3", title:"Defend vs spin — play out 20 balls of spin on off stump, no dismissals",    cat:"batting", area:"spinners"},
+    ],
+    Thu:[
+      {id:"SP-T1", title:"Spin survival pressure — face 30 spin balls, target: not dismissed once",   cat:"batting", area:"spinners"},
+      {id:"SP-T2", title:"Drive vs spin — use feet, reach the pitch, drive through covers, 15 reps",  cat:"batting", area:"spinners"},
+      {id:"SP-T3", title:"Reverse sweep vs spinner — 10 reps, controlled, not in the air",            cat:"batting", area:"spinners"},
+    ],
+    Sat:[
+      {id:"SP-S1", title:"Match KPI: If you face spin — play at least 10 balls without losing wicket", cat:"batting", area:"spinners"},
+    ],
+  },
+};
+
+const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const DAY_LABELS = ["Batting + Fitness","Bowling + Fielding","Mental + Recovery","Batting + Strength","Bowling + Fielding","Match Day","Active Recovery"];
+
+const CATS = {
+  batting:{label:"Batting",color:"#3b82f6"},
+  bowling:{label:"Bowling",color:"#f59e0b"},
+  fielding:{label:"Fielding",color:"#10b981"},
+  fitness:{label:"Fitness",color:"#ec4899"},
+  mental:{label:"Mental",color:"#a78bfa"},
+};
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+const KEY = "cricket_v5";
+let db = {progress:{}, weekAreas:{}, weekDone:{}};
+try {
+  const raw = localStorage.getItem(KEY);
+  if (raw) db = JSON.parse(raw);
+  if (!db.progress) db.progress = {};
+  if (!db.weekAreas) db.weekAreas = {};
+  if (!db.weekDone) db.weekDone = {};
+} catch(e) { db = {progress:{}, weekAreas:{}, weekDone:{}}; }
+
+let activeWeek = 0, activeDay = 0;
+let modalWeek = 0, selAreas = new Set();
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch(e) {} }
+
+// ── BUILD SESSIONS ─────────────────────────────────────────────────────────
+function buildDays(wi) {
+  const areas = Array.isArray(db.weekAreas[wi]) ? db.weekAreas[wi] : [];
+  return DAYS.map((day, di) => {
+    // Prefix fixed drills with week index to keep IDs unique per week
+    const fixed = (FIXED[day] || []).map(s => ({...s, id:`W${wi+1}-${s.id}`}));
+
+    // Gather area-specific drills for batting days
+    let areaDrills = [];
+    if (day === "Mon" || day === "Thu" || day === "Sat") {
+      areas.forEach(areaId => {
+        const drillSet = AREA_DRILLS[areaId];
+        if (!drillSet) return;
+        const dayDrills = drillSet[day] || [];
+        dayDrills.forEach(d => {
+          areaDrills.push({...d, id:`W${wi+1}-${d.id}`});
+        });
+      });
+    }
+
+    return { day, label: DAY_LABELS[di], sessions: [...fixed, ...areaDrills] };
+  });
+}
+
+// ── MODAL ──────────────────────────────────────────────────────────────────
+function openModal(wi) {
+  modalWeek = wi;
+  selAreas = new Set(Array.isArray(db.weekAreas[wi]) ? db.weekAreas[wi] : []);
+  document.getElementById('mtag').textContent = `Week ${wi+1} Setup`;
+  document.getElementById('mtitle').textContent = `Week ${wi+1}: Pick your focus areas`;
+  renderAreaGrid();
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function renderAreaGrid() {
+  document.getElementById('agrid').innerHTML = AREAS.map(a => {
+    const s = selAreas.has(a.id);
+    return `<div class="area-card ${s?'sel':''}" style="--ac:${a.color};--abg:${a.bg}" onclick="toggleArea('${a.id}')">
+      <div class="area-icon">${a.icon}</div>
+      <div class="area-info">
+        <div class="area-name" style="color:${s?a.color:'#e2e8f0'}">${a.name}</div>
+        <div class="area-desc">${a.desc}</div>
+      </div>
+      <div class="area-check">✓</div>
+    </div>`;
+  }).join('');
+  document.getElementById('cbtn').disabled = selAreas.size === 0;
+}
+
+function toggleArea(id) {
+  if (selAreas.has(id)) selAreas.delete(id); else selAreas.add(id);
+  renderAreaGrid();
+}
+
+function confirmAreas() {
+  db.weekAreas[modalWeek] = [...selAreas];
+  db.weekDone[modalWeek] = false;
+  save();
+  document.getElementById('modal').classList.add('hidden');
+  renderAll();
+}
+
+// ── TRACKER ────────────────────────────────────────────────────────────────
+function setStatus(id, status) {
+  db.progress[id] = db.progress[id] === status ? null : status;
+  save();
+  renderDrillList();
+  renderDayTabs();
+  renderDayProgress();
+}
+
+function toggleWeekDone(wi) {
+  db.weekDone[wi] = !db.weekDone[wi];
+  save();
+  renderAll();
+}
+
+function switchView(v) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  event.target.classList.add('active');
+  if (v === 'analytics') renderAnalytics();
+}
+
+function getDayCounts(day) {
+  let done=0, miss=0;
+  (day.sessions || []).forEach(s => {
+    if (db.progress[s.id]==='done') done++;
+    if (db.progress[s.id]==='miss') miss++;
+  });
+  return {done, miss, total:(day.sessions||[]).length};
+}
+
+function selectWeek(i) {
+  activeWeek = i; activeDay = 0;
+  const has = Array.isArray(db.weekAreas[i]) && db.weekAreas[i].length > 0;
+  if (!has) { renderWeekRow(); renderNoplan(); setTimeout(()=>openModal(i), 80); return; }
+  renderAll();
+}
+
+function selectDay(i) {
+  activeDay = i;
+  renderDayTabs();
+  renderDayProgress();
+  renderDrillList();
+}
+
+function renderWeekRow() {
+  document.getElementById('week-row').innerHTML = WEEKS.map((w,i) => {
+    const active = i === activeWeek;
+    const has = Array.isArray(db.weekAreas[i]) && db.weekAreas[i].length > 0;
+    const done = db.weekDone[i];
+    return `<button class="week-btn" onclick="selectWeek(${i})" style="
+      border-color:${active?w.color:(done?'#10b98144':'#1e293b')};
+      color:${active?w.color:(done?'#10b981':'#475569')};
+      background:${active?w.color+'22':(done?'#0a1f0f':'#0f172a')};
+    ">
+      <div class="wn">W${w.week}</div>
+      <div class="ws">${done?'✓ Done':has?'Active':'⚙ Setup'}</div>
+    </button>`;
+  }).join('');
+}
+
+function renderNoplan() {
+  document.getElementById('tbody').innerHTML = `<div class="no-plan">
+    <div class="no-plan-icon">🎯</div>
+    <div class="no-plan-txt">No areas selected for Week ${activeWeek+1}.<br>Pick what you want to train this week.</div>
+    <button class="setup-btn" onclick="openModal(${activeWeek})">⚙️ Select Areas</button>
+  </div>`;
+}
+
+function renderTrackerBody() {
+  const has = Array.isArray(db.weekAreas[activeWeek]) && db.weekAreas[activeWeek].length > 0;
+  if (!has) { renderNoplan(); return; }
+
+  const w = WEEKS[activeWeek];
+  const isDone = !!db.weekDone[activeWeek];
+  const chosenAreas = (db.weekAreas[activeWeek]||[]).map(id=>AREAS.find(a=>a.id===id)).filter(Boolean);
+
+  let html = '';
+
+  if (isDone) {
+    html += `<div class="done-banner">
+      <div class="di">🏆</div>
+      <div class="dm">Week ${activeWeek+1} Complete!</div>
+      <div class="ds">Move to the next week when ready.</div>
+    </div>`;
+  }
+
+  html += `<div class="wk-header" style="background:linear-gradient(135deg,${w.color}11,${w.color}22);border:1px solid ${w.color}33;border-left:4px solid ${w.color};">
+    <div class="wk-top">
+      <div>
+        <div class="wk-label" style="color:${w.color}">Week ${w.week}</div>
+        <div class="wk-title">${w.theme}</div>
+      </div>
+      <button class="done-btn ${isDone?'active':''}" onclick="toggleWeekDone(${activeWeek})">${isDone?'✓ Done':'Mark Done'}</button>
+    </div>
+    <div class="area-pills">
+      ${chosenAreas.map(a=>`<span class="area-pill" style="background:${a.bg};border:1px solid ${a.color}44;color:${a.color}">${a.icon} ${a.name}</span>`).join('')}
+    </div>
+    <button class="change-btn" onclick="openModal(${activeWeek})">Change areas ↺</button>
+  </div>`;
+
+  html += `<div class="day-scroll" id="day-tabs"></div>
+  <div class="prog-wrap">
+    <div class="prog-row">
+      <span id="day-label" style="font-weight:600;color:#94a3b8;font-size:12px;"></span>
+      <span id="day-pct" style="font-weight:700;font-size:12px;"></span>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+  <div class="drill-list" id="drill-list"></div>`;
+
+  document.getElementById('tbody').innerHTML = html;
+  renderDayTabs();
+  renderDayProgress();
+  renderDrillList();
+}
+
+function renderDayTabs() {
+  const el = document.getElementById('day-tabs');
+  if (!el) return;
+  const w = WEEKS[activeWeek];
+  const days = buildDays(activeWeek);
+  el.innerHTML = days.map((d,i) => {
+    const active = i === activeDay;
+    const c = getDayCounts(d);
+    let cnt = '';
+    if (c.done>0) cnt += `<span style="color:#10b981">✓${c.done}</span>`;
+    if (c.miss>0) cnt += `<span style="color:#ef4444;margin-left:2px">✗${c.miss}</span>`;
+    return `<button class="day-tab ${active?'active':''}" onclick="selectDay(${i})"
+      style="${active?`border-color:${w.color};`:''}">
+      <div class="dt-name">${d.day}</div>
+      <div class="dt-cnt">${cnt}</div>
+    </button>`;
+  }).join('');
+}
+
+function renderDayProgress() {
+  const lb = document.getElementById('day-label');
+  const pe = document.getElementById('day-pct');
+  const pf = document.getElementById('prog-fill');
+  if (!lb||!pe||!pf) return;
+  const w = WEEKS[activeWeek];
+  const day = buildDays(activeWeek)[activeDay];
+  const c = getDayCounts(day);
+  const pct = c.total>0 ? Math.round((c.done/c.total)*100) : 0;
+  lb.textContent = day.label;
+  pe.textContent = `${c.done}/${c.total} done · ${pct}%`;
+  pe.style.color = pct>70?'#10b981':pct>40?'#f59e0b':'#ef4444';
+  pf.style.width = pct+'%';
+  pf.style.background = `linear-gradient(90deg,${w.color},${w.color}99)`;
+}
+
+function renderDrillList() {
+  const el = document.getElementById('drill-list');
+  if (!el) return;
+  const day = buildDays(activeWeek)[activeDay];
+  if (!day.sessions || day.sessions.length === 0) {
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:#475569;font-size:13px;">Rest day — no drills today.</div>`;
+    return;
+  }
+  el.innerHTML = day.sessions.map(s => {
+    const st = db.progress[s.id] || 'pending';
+    const cat = CATS[s.cat] || CATS.batting;
+    const areaObj = s.area ? AREAS.find(a=>a.id===s.area) : null;
+    const dotColor = areaObj ? areaObj.color : cat.color;
+    const label = areaObj ? areaObj.name : cat.label;
+    return `<div class="dc ${st}">
+      <div class="cd" style="background:${dotColor}"></div>
+      <div class="dt">
+        <div class="dn ${st}">${s.title}</div>
+        <div class="da" style="color:${dotColor}88">${label}</div>
+      </div>
+      <div class="dbtns">
+        <button class="dbtn ${st==='done'?'don':''}" onclick="setStatus('${s.id}','done')">✓</button>
+        <button class="dbtn ${st==='miss'?'mis':''}" onclick="setStatus('${s.id}','miss')">✗</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAll() {
+  renderWeekRow();
+  renderTrackerBody();
+}
+
+// ── ANALYTICS ──────────────────────────────────────────────────────────────
+function getAllSessions() {
+  let all = [];
+  WEEKS.forEach((_,wi) => {
+    try {
+      buildDays(wi).forEach(d => (d.sessions||[]).forEach(s => all.push({...s, weekIdx:wi})));
+    } catch(e) {}
+  });
+  return all;
+}
+
+function getStats() {
+  const all = getAllSessions();
+  let total=0, done=0, missed=0, byCat={};
+  Object.keys(CATS).forEach(c => { byCat[c]={done:0,missed:0,total:0}; });
+  let byWeek = WEEKS.map(w=>({week:w.week,theme:w.theme,color:w.color,done:0,missed:0,total:0}));
+  all.forEach(s => {
+    const cat = s.cat||'batting';
+    if (!byCat[cat]) byCat[cat]={done:0,missed:0,total:0};
+    total++; byWeek[s.weekIdx].total++; byCat[cat].total++;
+    if (db.progress[s.id]==='done'){done++;byWeek[s.weekIdx].done++;byCat[cat].done++;}
+    if (db.progress[s.id]==='miss'){missed++;byWeek[s.weekIdx].missed++;byCat[cat].missed++;}
+  });
+  return {total,done,missed,pending:total-done-missed,byCat,byWeek};
+}
+
+function renderAnalytics() {
+  const s = getStats();
+  const op = s.total>0?Math.round((s.done/s.total)*100):0;
+  const mp = s.total>0?Math.round((s.missed/s.total)*100):0;
+
+  document.getElementById('sg').innerHTML = [
+    {label:'Completed',val:s.done,color:'#10b981',bc:'#10b98133'},
+    {label:'Missed',val:s.missed,color:'#ef4444',bc:'#ef444433'},
+    {label:'Pending',val:s.pending,color:'#64748b',bc:'#1e293b'},
+  ].map(x=>`<div class="sc" style="border-color:${x.bc}"><div class="sv" style="color:${x.color}">${x.val}</div><div class="sl">${x.label}</div></div>`).join('');
+
+  document.getElementById('obd').style.width = op+'%';
+  document.getElementById('obm').style.width = mp+'%';
+  document.getElementById('obm').style.left = op+'%';
+
+  document.getElementById('catbd').innerHTML = Object.entries(s.byCat).map(([key,val])=>{
+    const cat = CATS[key]||{label:key,color:'#64748b'};
+    const p = val.total>0?Math.round((val.done/val.total)*100):0;
+    const m = val.total>0?Math.round((val.missed/val.total)*100):0;
+    return `<div class="cr">
+      <div class="crh">
+        <div class="cn"><div style="width:8px;height:8px;border-radius:50%;background:${cat.color}"></div>${cat.label}</div>
+        <div style="display:flex;gap:10px;font-size:12px;"><span style="color:#10b981">${val.done}✓</span><span style="color:#ef4444">${val.missed}✗</span><span style="color:#475569">${val.total-val.done-val.missed} left</span></div>
+      </div>
+      <div class="bt"><div class="bd" style="background:${cat.color};width:${p}%"></div><div class="bm" style="left:${p}%;width:${m}%"></div></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('wkbd').innerHTML = s.byWeek.map(w=>{
+    const p = w.total>0?Math.round((w.done/w.total)*100):0;
+    const pc = p>=70?'#10b981':p>=40?'#f59e0b':'#ef4444';
+    const done = db.weekDone[w.week-1];
+    return `<div class="wr" style="border-left:3px solid ${w.color};border-color:${w.color}22">
+      <div class="wrh">
+        <div><span style="font-weight:700;color:${w.color}">Week ${w.week}</span><span style="color:#475569;margin-left:8px">${w.theme}</span>${done?'<span style="margin-left:8px;font-size:10px;color:#10b981">✓ DONE</span>':''}</div>
+        <span style="font-weight:700;color:${pc}">${p}%</span>
+      </div>
+      <div class="bt" style="height:5px"><div class="bd" style="background:${w.color};width:${p}%"></div></div>
+      <div class="wc"><span style="color:#10b981">✓ ${w.done}</span><span style="color:#ef4444">✗ ${w.missed}</span><span>${w.total-w.done-w.missed} left</span></div>
+    </div>`;
+  }).join('');
+
+  if (s.done+s.missed>0) {
+    const worst = Object.entries(s.byCat).filter(([,v])=>v.total>0&&v.missed>0).sort(([,a],[,b])=>(b.missed/b.total)-(a.missed/a.total))[0];
+    const best = Object.entries(s.byCat).filter(([,v])=>v.done>0).sort(([,a],[,b])=>(b.done/b.total)-(a.done/a.total))[0];
+    let html='';
+    if(best) html+=`<div class="il" style="color:#86efac">Strongest: <strong>${CATS[best[0]]?.label||best[0]}</strong> (${Math.round((best[1].done/best[1].total)*100)}% done). Keep it.</div>`;
+    if(worst) html+=`<div class="il" style="color:#fca5a5">Weakest: <strong>${CATS[worst[0]]?.label||worst[0]}</strong> (${Math.round((worst[1].missed/worst[1].total)*100)}% miss rate). This is what's holding you back.</div>`;
+    html+=`<div class="in">Below 70%? You're skipping what's uncomfortable. That's the actual problem.</div>`;
+    document.getElementById('icont').innerHTML = html;
+    document.getElementById('ic').style.display = 'block';
+  } else {
+    document.getElementById('ic').style.display = 'none';
+  }
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+renderAll();
+const hasWeek1 = Array.isArray(db.weekAreas[0]) && db.weekAreas[0].length > 0;
+if (!hasWeek1) setTimeout(()=>openModal(0), 400);
+</script>
+</body>
+</html>
